@@ -35,12 +35,12 @@ class SoundCloudDownloader:
                 'extractor_retries': 2
             }
             
-            # Поиск треков на SoundCloud
+            # Поиск треков ТОЛЬКО на SoundCloud
             search_queries = [
-                f"ytsearch{limit}:{query}",  # YouTube поиск
                 f"scsearch{limit}:{query}",  # SoundCloud поиск
-                f"ytsearch{limit}:{query} music",  # YouTube с добавлением "music"
                 f"scsearch{limit}:{query} remix",  # SoundCloud ремиксы
+                f"scsearch{limit}:{query} cover",  # SoundCloud каверы
+                f"scsearch{limit}:{query} original",  # SoundCloud оригиналы
             ]
             
             tracks = []
@@ -67,8 +67,8 @@ class SoundCloudDownloader:
                                 webpage_url = entry.get('webpage_url', '')
                                 title = entry.get('title', 'Unknown')
                                 
-                                # Определяем источник по URL
-                                source = 'SoundCloud' if 'soundcloud.com' in webpage_url else 'YouTube'
+                                # Все треки только с SoundCloud
+                                source = 'SoundCloud'
                                 
                                 # Добавляем все найденные треки
                                 track_info = {

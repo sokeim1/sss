@@ -53,7 +53,8 @@ class MusicBot:
         for i, track in enumerate(current_tracks):
             track_idx = start_idx + i
             duration = self.downloader.format_duration(track.get('duration', 0))
-            source_icon = "🔊" if track.get('source') == 'SoundCloud' else "🎵"
+            # Иконка только для SoundCloud
+            source_icon = '🔊'
             
             # Обрезаем название и исполнителя для кнопки
             title = track['title'][:30] + "..." if len(track['title']) > 30 else track['title']
