@@ -37,10 +37,9 @@ class SoundCloudDownloader:
             }
             
             # Поиск треков ТОЛЬКО на SoundCloud
-            # Используем разные подходы для поиска
+            # Используем только прямой поиск, так как scsearch возвращает неправильные API URL
             search_queries = [
                 f"https://soundcloud.com/search?q={query.replace(' ', '%20')}",  # Прямой поиск на SoundCloud
-                f"scsearch{min(limit, 10)}:{query}",  # SoundCloud поиск (ограничиваем до 10)
             ]
             
             tracks = []
@@ -70,18 +69,44 @@ class SoundCloudDownloader:
                                     
                                 # Получаем URL и ID трека
                                 webpage_url = entry.get('webpage_url', '')
+                                original_url = entry.get('url', '')
                                 track_id = entry.get('id', '')
                                 
-                                logger.debug(f"URL трека: {webpage_url}")
+                                logger.debug(f"Исходный URL: {webpage_url}")
+                                logger.debug(f"Original URL: {original_url}")
+                                logger.debug(f"Track ID: {track_id}")
                                 
-                                # Если URL содержит API SoundCloud, пропускаем его
+                                # Если URL содержит API SoundCloud, попробуем преобразовать его
                                 if 'api.soundcloud.com' in webpage_url:
-                                    logger.warning(f"Пропускаем API URL: {webpage_url}")
+                                    logger.info(f"Обнаружен API URL, пытаемся преобразовать: {webpage_url}")
+                                    
+                                    # Извлекаем ID из API URL
+                                    if 'soundcloud%3Atracks%3A' in webpage_url:
+                                        try:
+                                            # Извлекаем ID трека из URL
+                                            sc_id = webpage_url.split('soundcloud%3Atracks%3A')[1]
+                                            if sc_id.isdigit():
+                                                # Используем прямой ID для yt-dlp
+                                                webpage_url = f"https://api.soundcloud.com/tracks/{sc_id}"
+                                                logger.info(f"Преобразован URL в API формат: {webpage_url}")
+                                            else:
+                                                logger.warning(f"Не удалось извлечь ID из URL: {webpage_url}")
+                                                continue
+                                        except Exception as e:
+                                            logger.warning(f"Ошибка преобразования URL: {e}")
+                                            continue
+                                    else:
+                                        logger.warning(f"Неизвестный формат API URL: {webpage_url}")
+                                        continue
+                                
+                                # Проверяем финальный URL
+                                if not webpage_url or not ('soundcloud.com' in webpage_url):
+                                    logger.warning(f"Неподдерживаемый URL после обработки: {webpage_url}")
                                     continue
                                 
-                                # Если нет нормального URL, пропускаем
-                                if not webpage_url or not webpage_url.startswith('https://soundcloud.com/'):
-                                    logger.warning(f"Неподдерживаемый URL: {webpage_url}")
+                                # Дополнительная проверка для API URL
+                                if 'api.soundcloud.com/tracks/soundcloud%3Atracks%3A' in webpage_url:
+                                    logger.warning(f"Все еще неправильный API URL: {webpage_url}")
                                     continue
                                 
                                 title = entry.get('title', 'Unknown')
