@@ -6,6 +6,7 @@ from typing import Optional, Dict, List
 from config import YTDL_OPTIONS, DOWNLOADS_DIR, TEMP_DIR, MAX_DOWNLOAD_SIZE_MB
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # Включаем debug логирование
 
 class SoundCloudDownloader:
     def __init__(self):
@@ -36,11 +37,10 @@ class SoundCloudDownloader:
             }
             
             # Поиск треков ТОЛЬКО на SoundCloud
+            # Используем разные подходы для поиска
             search_queries = [
-                f"scsearch{limit}:{query}",  # SoundCloud поиск
-                f"scsearch{limit}:{query} remix",  # SoundCloud ремиксы
-                f"scsearch{limit}:{query} cover",  # SoundCloud каверы
-                f"scsearch{limit}:{query} original",  # SoundCloud оригиналы
+                f"https://soundcloud.com/search?q={query.replace(' ', '%20')}",  # Прямой поиск на SoundCloud
+                f"scsearch{min(limit, 10)}:{query}",  # SoundCloud поиск (ограничиваем до 10)
             ]
             
             tracks = []
@@ -58,13 +58,32 @@ class SoundCloudDownloader:
                         )
                     
                     if search_results and 'entries' in search_results:
-                        for entry in search_results['entries']:
+                        logger.info(f"Найдено {len(search_results['entries'])} записей в результатах поиска")
+                        for i, entry in enumerate(search_results['entries']):
                             if entry and len(tracks) < limit:
+                                logger.debug(f"Обрабатываем запись {i+1}: {entry.get('title', 'Unknown')}")
+                                
                                 # Проверяем доступность видео
                                 if entry.get('availability') == 'unavailable':
+                                    logger.debug(f"Пропускаем недоступный трек: {entry.get('title', 'Unknown')}")
                                     continue
                                     
+                                # Получаем URL и ID трека
                                 webpage_url = entry.get('webpage_url', '')
+                                track_id = entry.get('id', '')
+                                
+                                logger.debug(f"URL трека: {webpage_url}")
+                                
+                                # Если URL содержит API SoundCloud, пропускаем его
+                                if 'api.soundcloud.com' in webpage_url:
+                                    logger.warning(f"Пропускаем API URL: {webpage_url}")
+                                    continue
+                                
+                                # Если нет нормального URL, пропускаем
+                                if not webpage_url or not webpage_url.startswith('https://soundcloud.com/'):
+                                    logger.warning(f"Неподдерживаемый URL: {webpage_url}")
+                                    continue
+                                
                                 title = entry.get('title', 'Unknown')
                                 
                                 # Все треки только с SoundCloud
@@ -76,12 +95,12 @@ class SoundCloudDownloader:
                                     'uploader': entry.get('uploader', 'Unknown'),
                                     'duration': entry.get('duration', 0),
                                     'url': webpage_url,
-                                    'id': entry.get('id', ''),
+                                    'id': track_id,
                                     'thumbnail': entry.get('thumbnail', ''),
                                     'source': source
                                 }
                                 tracks.append(track_info)
-                                logger.info(f"Найден трек: {title} от {entry.get('uploader', 'Unknown')} ({source})")
+                                logger.info(f"Найден трек: {title} от {entry.get('uploader', 'Unknown')} ({source}) - URL: {webpage_url}")
                         
                 except Exception as search_error:
                     logger.warning(f"Ошибка поиска с запросом {search_url}: {search_error}")
