@@ -35,12 +35,12 @@ class SoundCloudDownloader:
                 'extractor_retries': 2
             }
             
-            # Пробуем альтернативные источники (не YouTube)
+            # Поиск треков на SoundCloud
             search_queries = [
-                f"bandcamp:{query}",  # Bandcamp
-                f"vimeo:{query} music",  # Vimeo музыка
-                f"archive:{query}",  # Internet Archive
-                f"generic:{query} music",  # Общий поиск
+                f"ytsearch{limit}:{query}",  # YouTube поиск
+                f"scsearch{limit}:{query}",  # SoundCloud поиск
+                f"ytsearch{limit}:{query} music",  # YouTube с добавлением "music"
+                f"scsearch{limit}:{query} remix",  # SoundCloud ремиксы
             ]
             
             tracks = []
@@ -67,6 +67,9 @@ class SoundCloudDownloader:
                                 webpage_url = entry.get('webpage_url', '')
                                 title = entry.get('title', 'Unknown')
                                 
+                                # Определяем источник по URL
+                                source = 'SoundCloud' if 'soundcloud.com' in webpage_url else 'YouTube'
+                                
                                 # Добавляем все найденные треки
                                 track_info = {
                                     'title': title,
@@ -75,55 +78,24 @@ class SoundCloudDownloader:
                                     'url': webpage_url,
                                     'id': entry.get('id', ''),
                                     'thumbnail': entry.get('thumbnail', ''),
-                                    'source': 'YouTube Music'
+                                    'source': source
                                 }
                                 tracks.append(track_info)
+                                logger.info(f"Найден трек: {title} от {entry.get('uploader', 'Unknown')} ({source})")
                         
                 except Exception as search_error:
                     logger.warning(f"Ошибка поиска с запросом {search_url}: {search_error}")
                     continue
             
-            logger.info(f"Найдено треков: {len(tracks)}")
+            logger.info(f"Всего найдено треков: {len(tracks)}")
             
-            # Если ничего не найдено, возвращаем заглушки для демонстрации
-            if not tracks:
-                logger.info("Создаем демо-треки для тестирования")
-                demo_tracks = [
-                    {
-                        'title': f'Demo Track 1 - {query}',
-                        'uploader': 'Demo Artist',
-                        'duration': 180,
-                        'url': 'https://www.soundcloud.com/demo1',
-                        'id': 'demo1',
-                        'thumbnail': '',
-                        'source': 'Demo'
-                    },
-                    {
-                        'title': f'Demo Track 2 - {query}',
-                        'uploader': 'Demo Artist 2',
-                        'duration': 240,
-                        'url': 'https://www.soundcloud.com/demo2',
-                        'id': 'demo2',
-                        'thumbnail': '',
-                        'source': 'Demo'
-                    }
-                ]
-                return demo_tracks[:limit]
-            
+            # Возвращаем найденные треки (убираем создание демо-треков)
             return tracks[:limit]
             
         except Exception as e:
             logger.error(f"Общая ошибка поиска: {e}")
-            # Возвращаем демо-треки при ошибке
-            return [{
-                'title': f'Demo Track - {query}',
-                'uploader': 'Demo Artist',
-                'duration': 180,
-                'url': 'https://www.soundcloud.com/demo',
-                'id': 'demo',
-                'thumbnail': '',
-                'source': 'Demo'
-            }]
+            # Возвращаем пустой список при ошибке
+            return []
     
     async def get_track_info(self, url: str) -> Optional[Dict]:
         """Получение информации о треке"""
@@ -153,8 +125,8 @@ class SoundCloudDownloader:
         try:
             # Проверяем, это демо-трек или реальный
             if 'demo' in url.lower():
-                logger.info("Обнаружен демо-трек, создаем заглушку")
-                return await self.create_demo_file(user_id)
+                logger.warning("Обнаружен демо-трек, пропускаем скачивание")
+                return None
             
             # Создаем уникальную папку для пользователя
             user_dir = os.path.join(DOWNLOADS_DIR, str(user_id))

@@ -16,7 +16,7 @@ MAX_FILE_SIZE_MB = 50  # Telegram file size limit
 # Supported formats
 SUPPORTED_FORMATS = ['mp3', 'wav', 'flac', 'm4a']
 
-# yt-dlp options for SoundCloud
+# yt-dlp options for SoundCloud and YouTube
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'extractaudio': True,
@@ -25,8 +25,12 @@ YTDL_OPTIONS = {
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
-    'ignoreerrors': False,
+    'ignoreerrors': True,  # Изменено на True для лучшей обработки ошибок
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
+    'socket_timeout': 30,
+    'retries': 3,
+    'geo_bypass': True,
+    'prefer_insecure': True,
 }
